@@ -25,6 +25,7 @@ Minimal classic Snake implementation with:
 - Move with arrows/WASD; snake advances one grid cell per tick.
 - Direction reversal (e.g., right -> left immediately) is blocked.
 - Eating food increases score by 1 and increases snake length.
+- Controls invert for scores 5-9, return to normal for 10-14, and continue toggling every 5 points.
 - Food never spawns on the snake body.
 - Hitting any boundary ends the game.
 - Hitting snake body ends the game.

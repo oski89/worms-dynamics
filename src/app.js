@@ -31,15 +31,16 @@ function render() {
   });
 
   scoreEl.textContent = String(state.score);
+  const controlMode = areControlsInverted(state.score) ? "Inverted controls" : "Normal controls";
 
   if (state.isGameOver) {
-    statusEl.textContent = "Game over";
+    statusEl.textContent = `Game over (${controlMode})`;
     pauseBtn.textContent = "Pause";
   } else if (state.isPaused) {
-    statusEl.textContent = "Paused";
+    statusEl.textContent = `Paused (${controlMode})`;
     pauseBtn.textContent = "Resume";
   } else {
-    statusEl.textContent = "Running";
+    statusEl.textContent = `Running (${controlMode})`;
     pauseBtn.textContent = "Pause";
   }
 }
@@ -72,7 +73,7 @@ setInterval(tick, TICK_MS);
 render();
 
 window.addEventListener("keydown", (event) => {
-  const direction = keyToDirection(event.key);
+  const direction = keyToDirection(event.key, state.score);
 
   if (direction) {
     event.preventDefault();
@@ -89,7 +90,7 @@ window.addEventListener("keydown", (event) => {
 
 document.querySelectorAll(".dir").forEach((button) => {
   button.addEventListener("click", () => {
-    const direction = button.getAttribute("data-dir");
+    const direction = mapDirection(button.getAttribute("data-dir"), state.score);
     state = setDirection(state, direction);
   });
 });
@@ -104,20 +105,20 @@ restartBtn.addEventListener("click", () => {
   render();
 });
 
-function keyToDirection(key) {
+function keyToDirection(key, score) {
   switch (key.toLowerCase()) {
     case "arrowup":
     case "w":
-      return "up";
+      return mapDirection("up", score);
     case "arrowdown":
     case "s":
-      return "down";
+      return mapDirection("down", score);
     case "arrowleft":
     case "a":
-      return "left";
+      return mapDirection("left", score);
     case "arrowright":
     case "d":
-      return "right";
+      return mapDirection("right", score);
     default:
       return null;
   }
@@ -126,4 +127,27 @@ function keyToDirection(key) {
 function getCssVar(name, fallback) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return value || fallback;
+}
+
+function mapDirection(direction, score) {
+  if (!areControlsInverted(score)) {
+    return direction;
+  }
+
+  switch (direction) {
+    case "up":
+      return "down";
+    case "down":
+      return "up";
+    case "left":
+      return "right";
+    case "right":
+      return "left";
+    default:
+      return null;
+  }
+}
+
+function areControlsInverted(score) {
+  return Math.floor(score / 5) % 2 === 1;
 }
