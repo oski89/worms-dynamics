@@ -28,6 +28,12 @@ body,
   inset: 0;
 }
 
+.hud-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .hud {
   position: absolute;
   top: 10px;
@@ -40,10 +46,30 @@ body,
   border-radius: 12px;
   max-width: min(78vw, 480px);
   font-size: 14px;
+  pointer-events: auto;
 }
 
 .hud .announcer {
   color: var(--accent);
+}
+
+.phase-countdown {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fffef6;
+  font-weight: 900;
+  font-size: clamp(26px, 5vw, 52px);
+  line-height: 1;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.5),
+    0 0 14px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.phase-countdown.large {
+  font-size: clamp(44px, 10vw, 110px);
 }
 
 .weapon-menu {

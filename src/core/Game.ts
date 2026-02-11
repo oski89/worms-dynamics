@@ -1,4 +1,4 @@
-import { GAME_CONFIG } from './Config';
+import { GAME_CONFIG, type Phase } from './Config';
 import { RNG } from './RNG';
 import { StateMachine } from './StateMachine';
 import { TurnManager } from './TurnManager';
@@ -32,6 +32,8 @@ import { MobileControls } from '../ui/MobileControls';
 import { ScreenShake } from '../ui/ScreenShake';
 import { TextSfx } from '../audio/TextSfx';
 import { decideTurnRecovery } from './TurnRecovery';
+import { stepCharge } from './ChargeLogic';
+import { countdownSecondsForPhase, shouldAdvanceActionPhase, shouldAdvanceMovePhase, tickPhaseTimer } from './PhaseLogic';
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -74,7 +76,7 @@ export class Game {
   private charging = false;
   private chargingFromMobile = false;
   private actionTriggerLatch = false;
-  private actionTimerMs = 0;
+  private phaseTimeLeftMs = 0;
   private resolveTimerMs = 0;
   private ridiculousnessOn = true;
 
@@ -144,7 +146,7 @@ export class Game {
     }
 
     this.turnManager.setWorms(this.worms);
-    this.state.setPhase('move');
+    this.transitionPhase('move');
     this.turnCount = 1;
     this.projectiles = [];
     this.particles = [];
@@ -155,7 +157,6 @@ export class Game {
     if (this.activeWorm) {
       this.activeWorm.moveBudgetMs = GAME_CONFIG.maxMoveSeconds * 1000;
       this.activeWorm.hasActed = false;
-      this.actionTimerMs = GAME_CONFIG.maxActionSeconds * 1000;
     }
   }
 
@@ -251,12 +252,14 @@ export class Game {
       projectileLabel: this.textSfx.currentText(this.nowMs)
     });
 
+    const phase = this.state.getPhase();
     this.hud.update(
       this.turnCount,
-      this.state.getPhase(),
+      phase,
       this.activeWorm,
       this.charge01,
-      this.actionTimerMs / 1000,
+      this.phaseTimeLeftMs / 1000,
+      countdownSecondsForPhase(phase, this.phaseTimeLeftMs),
       this.announcer.getMessage(this.nowMs)
     );
   }
@@ -265,45 +268,57 @@ export class Game {
     if (!this.activeWorm || !this.activeWorm.alive || this.winner) return;
     const worm = this.activeWorm;
     const phase = this.state.getPhase();
+    const dtMs = dt * 1000;
+    const spacePressed = this.input.consumePressed(' ');
+    const spaceReleased = this.input.consumeReleased(' ');
 
     if (phase === 'move') {
-      worm.moveBudgetMs -= dt * 1000;
+      this.phaseTimeLeftMs = tickPhaseTimer(this.phaseTimeLeftMs, dtMs);
       this.applyMovementInput(worm, dt, mobile);
-      if (worm.moveBudgetMs <= 0 || mobile.endTurnPressed) {
-        this.state.setPhase('action');
-        this.actionTimerMs = GAME_CONFIG.maxActionSeconds * 1000;
+
+      if (shouldAdvanceMovePhase(this.phaseTimeLeftMs, spacePressed || mobile.endTurnPressed)) {
+        this.transitionPhase('action');
       }
       return;
     }
 
     if (phase === 'action') {
-      this.actionTimerMs -= dt * 1000;
+      this.phaseTimeLeftMs = tickPhaseTimer(this.phaseTimeLeftMs, dtMs);
       this.applyAimInput(worm, dt, mobile);
       const weapon = this.weapons.get(this.selectedWeaponId);
-      if (this.actionTimerMs <= 0) {
-        if (weapon.type === 'projectile') {
-          this.charge01 = Math.max(this.charge01, 0.55);
-          this.fireProjectileWeapon(worm, weapon, this.charge01);
-        } else {
-          this.announcer.say('Turn timer expired. Dramatic hesitation.', this.nowMs, 1400);
-        }
-        worm.hasActed = true;
-        this.charging = false;
-        this.chargingFromMobile = false;
-        this.charge01 = 0;
-      } else if (worm.stunUntilMs > this.nowMs) {
+
+      if (worm.stunUntilMs > this.nowMs) {
         worm.hasActed = true;
       } else {
-        this.handleActionInput(worm, weapon, mobile, dt);
+        this.handleActionInput(worm, weapon, mobile, dt, spacePressed, spaceReleased);
+
+        const skipAction =
+          !this.charging &&
+          (mobile.endTurnPressed || (spacePressed && weapon.type !== 'projectile'));
+        if (skipAction) {
+          this.announcer.say('Action skipped.', this.nowMs, 900);
+          worm.hasActed = true;
+        }
+
+        if (shouldAdvanceActionPhase(this.phaseTimeLeftMs, false, this.charging)) {
+          if (weapon.type === 'projectile' && this.charging) {
+            this.fireProjectileWeapon(worm, weapon, Math.max(GAME_CONFIG.minPower, this.charge01));
+          }
+          this.charging = false;
+          this.chargingFromMobile = false;
+          this.charge01 = 0;
+          worm.hasActed = true;
+        }
       }
+
       if (worm.hasActed) {
-        this.state.setPhase('resolve');
+        this.transitionPhase('resolve');
       }
       return;
     }
 
     if (phase === 'resolve') {
-      this.resolveTimerMs += dt * 1000;
+      this.resolveTimerMs += dtMs;
       const noProjectiles = this.projectiles.every((p) => !p.active);
       const settled = this.worms
         .filter((w) => w.alive)
@@ -347,26 +362,44 @@ export class Game {
     worm: Worm,
     weapon: WeaponConfig,
     mobile: ReturnType<MobileControls['consumeState']>,
-    dt: number
+    dt: number,
+    spacePressed: boolean,
+    spaceReleased: boolean
   ): void {
-    const keyboardHeld = this.input.chargeHeld;
-    const triggerHeld = keyboardHeld || mobile.fireHeld;
-    const triggerPressed = mobile.firePressed || (triggerHeld && !this.actionTriggerLatch);
+    const pointerHeld = this.input.isPointerHeld();
 
     if (weapon.type === 'projectile') {
-      if (triggerHeld) {
-        if (!this.charging) this.chargingFromMobile = mobile.fireHeld && !keyboardHeld;
-        this.charging = true;
-        this.charge01 = Math.min(1, this.charge01 + dt * 0.7);
+      const startPressed = spacePressed || mobile.firePressed;
+      if (startPressed && !this.charging) {
+        this.chargingFromMobile = mobile.firePressed && !spacePressed;
       }
-      if (this.charging && !triggerHeld) {
+
+      const chargeStep = stepCharge(
+        { charging: this.charging, power: this.charge01 },
+        {
+          startPressed,
+          held: this.input.isChargeHeld() || mobile.fireHeld,
+          released: spaceReleased || mobile.fireReleased,
+          dtMs: dt * 1000
+        },
+        {
+          chargeRate: GAME_CONFIG.chargeRate,
+          minPower: GAME_CONFIG.minPower,
+          maxPower: GAME_CONFIG.maxPower
+        }
+      );
+
+      this.charging = chargeStep.state.charging;
+      this.charge01 = chargeStep.state.power;
+
+      if (chargeStep.firePower !== null) {
         const blockedTap =
           this.chargingFromMobile &&
           mobile.fireReleased &&
           mobile.fireHoldMs < GAME_CONFIG.mobileProjectileHoldGuardMs;
 
         if (!blockedTap) {
-          this.fireProjectileWeapon(worm, weapon);
+          this.fireProjectileWeapon(worm, weapon, chargeStep.firePower);
           worm.hasActed = true;
         } else {
           this.announcer.say('Tap was too short. Hold Fire a bit longer.', this.nowMs, 1000);
@@ -376,7 +409,13 @@ export class Game {
         this.chargingFromMobile = false;
         this.charge01 = 0;
       }
-    } else if (triggerPressed) {
+      return;
+    }
+
+    const triggerHeld = pointerHeld || mobile.fireHeld;
+    const triggerPressed = mobile.firePressed || (triggerHeld && !this.actionTriggerLatch);
+
+    if (triggerPressed) {
       if (weapon.type === 'melee') {
         const result = executeMelee(
           weapon,
@@ -411,8 +450,9 @@ export class Game {
 
     this.actionTriggerLatch = triggerHeld;
   }
+
   private fireProjectileWeapon(worm: Worm, weapon: WeaponConfig, power01Override?: number): void {
-    const power01 = Math.max(0.08, power01Override ?? this.charge01);
+    const power01 = Math.max(GAME_CONFIG.minPower, Math.min(GAME_CONFIG.maxPower, power01Override ?? this.charge01));
     const spawns = spawnProjectiles(
       weapon,
       worm,
@@ -592,15 +632,29 @@ export class Game {
     }
   }
 
+  private transitionPhase(phase: Phase): void {
+    this.state.setPhase(phase);
+    if (phase === 'move') {
+      this.phaseTimeLeftMs = GAME_CONFIG.maxMoveSeconds * 1000;
+      return;
+    }
+    if (phase === 'action') {
+      this.phaseTimeLeftMs = GAME_CONFIG.maxActionSeconds * 1000;
+      return;
+    }
+    if (phase === 'resolve') {
+      this.resolveTimerMs = 0;
+    }
+  }
+
   private nextTurn(): void {
     this.resolveTimerMs = 0;
-    this.state.setPhase('move');
+    this.transitionPhase('move');
     this.turnCount += 1;
     this.activeWorm = this.turnManager.nextLiving() ?? null;
     if (!this.activeWorm) return;
     this.activeWorm.moveBudgetMs = GAME_CONFIG.maxMoveSeconds * 1000;
     this.activeWorm.hasActed = false;
-    this.actionTimerMs = GAME_CONFIG.maxActionSeconds * 1000;
     this.charge01 = 0;
     this.charging = false;
     this.chargingFromMobile = false;
@@ -618,8 +672,7 @@ export class Game {
     });
 
     if (decision === 'resolve') {
-      this.state.setPhase('resolve');
-      this.resolveTimerMs = 0;
+      this.transitionPhase('resolve');
       return;
     }
 
