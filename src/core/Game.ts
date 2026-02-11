@@ -533,26 +533,28 @@ export class Game {
       worm.vx = Math.max(-GAME_CONFIG.wormMaxVx, Math.min(GAME_CONFIG.wormMaxVx, worm.vx));
       worm.vy = Math.max(-GAME_CONFIG.wormMaxVy, Math.min(GAME_CONFIG.wormMaxVy, worm.vy));
 
+      const impactVy = worm.vy;
       const collision = resolveCircleTerrainCollision(this.terrain, worm.x, worm.y, worm.radius);
       if (collision.collided) {
         worm.y = collision.correctedY;
-        if (worm.vy > 120) {
-          worm.squashX = 1.28;
-          worm.squashY = 0.72;
-          this.spawnBurst(worm.x, worm.y + worm.radius, 'star', 5);
-        }
+      }
+
+      worm.grounded = collision.grounded;
+      if (worm.grounded && worm.vy > 0) {
         worm.vy = 0;
-        worm.grounded = true;
-      } else {
-        worm.grounded = false;
       }
 
       if (worm.grounded) worm.vx *= 0.86;
       else worm.vx *= 0.995;
 
       if (!wasGrounded && worm.grounded) {
-        worm.squashX = 1.15;
-        worm.squashY = 0.85;
+        if (impactVy > 120) {
+          worm.squashX = 1.28;
+          worm.squashY = 0.72;
+          this.spawnBurst(worm.x, worm.y + worm.radius, 'star', 5);
+        }
+        worm.squashX = Math.max(worm.squashX, 1.15);
+        worm.squashY = Math.min(worm.squashY, 0.85);
       }
 
       if (
