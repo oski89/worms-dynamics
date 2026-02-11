@@ -1,0 +1,158 @@
+:root {
+  --hud-bg: rgba(14, 25, 38, 0.7);
+  --panel: rgba(20, 32, 48, 0.88);
+  --text: #eff6ff;
+  --accent: #ffd15d;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at 20% 20%, #d6f4ff, #a6d5ff 55%, #88bdef);
+  font-family: 'Trebuchet MS', 'Avenir Next', sans-serif;
+}
+
+.game-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.game-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  background: var(--hud-bg);
+  padding: 10px 12px;
+  border-radius: 12px;
+  max-width: min(78vw, 480px);
+  font-size: 14px;
+}
+
+.hud .announcer {
+  color: var(--accent);
+}
+
+.weapon-menu {
+  position: absolute;
+  left: 10px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 60vw;
+}
+
+.weapon-menu button {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(17, 42, 66, 0.88);
+  color: #e8f2ff;
+  font-size: 13px;
+}
+
+.weapon-menu button.active {
+  outline: 2px solid #ffd15d;
+}
+
+.pause-menu {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px;
+  min-width: 190px;
+}
+
+.pause-menu .paused-label {
+  opacity: 0;
+}
+
+.pause-menu.show .paused-label {
+  opacity: 1;
+  color: #ffdb85;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mobile-controls {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 12px;
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.mobile-controls > * {
+  pointer-events: auto;
+}
+
+.left-pad,
+.right-pad {
+  border-radius: 14px;
+  background: rgba(12, 26, 43, 0.62);
+  color: #ecf8ff;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.fire-btn,
+.end-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.fire-btn {
+  background: #ff855f;
+  color: #fff;
+}
+
+.end-btn {
+  background: #5c9cff;
+  color: #fff;
+}
+
+@media (pointer: coarse) {
+  .mobile-controls {
+    display: grid;
+  }
+
+  .weapon-menu {
+    max-width: 95vw;
+    bottom: 180px;
+  }
+
+  .hud {
+    max-width: 94vw;
+    font-size: 13px;
+  }
+}

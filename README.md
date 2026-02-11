@@ -1,38 +1,80 @@
-# Snake Game
+# Worms Dynamics
 
-Minimal classic Snake implementation with:
-- Grid movement
-- Food spawning
-- Growth + score
-- Game-over on wall/self collision
-- Pause + restart
+> Why HTML5 Canvas (not Phaser): Canvas keeps the prototype lightweight and gives direct pixel-level control for destructible terrain masks, while remaining easy to tune for desktop and mobile touch.
 
-## Run
+A silly, turn-based 2D artillery prototype inspired by Worms, with exaggerated physics and comedy weapon quirks.
 
-1. From `/Users/oski/Documents/codex/test-project`, run:
-   `python3 -m http.server 8000`
-2. Open `http://localhost:8000` in your browser.
+## Setup
+
+```bash
+npm install
+npm run dev
+npm run build
+npm run test
+```
 
 ## Controls
 
-- Keyboard: Arrow keys or `W/A/S/D`
-- Pause/resume: `Space` or `Pause` button
-- Restart: `Restart` button
-- On-screen directional buttons are available for touch/mobile.
+Desktop:
+- `A/D` or `Left/Right`: move
+- `W/S` or `Up/Down`: aim angle
+- Hold `Space` or mouse press: charge projectile power
+- Release `Space`/mouse: fire projectile
+- `1-4`: select weapon
+- `R`: restart match
+- `Esc`: pause/menu
 
-## Manual Verification Checklist
+Mobile:
+- Left pad: movement joystick
+- Right pad: drag aim
+- `Fire` button: hold/release charge for projectile, tap for melee/cone
+- Weapon buttons: bottom list
+- `End Turn`: manual phase skip from move phase
 
-- Move with arrows/WASD; snake advances one grid cell per tick.
-- Direction reversal (e.g., right -> left immediately) is blocked.
-- Eating food increases score by 1 and increases snake length.
-- Controls invert for scores 5-9, return to normal for 10-14, and continue toggling every 5 points.
-- Food never spawns on the snake body.
-- Hitting any boundary ends the game.
-- Hitting snake body ends the game.
-- Pause stops movement; resume continues from current state.
-- Restart resets score, snake position, and game-over status.
+## Weapon JSON format
 
-## Notes on Tests
+File: `/Users/oski/Documents/codex/test-project/worms-dynamics/src/weapons/data/weapons.json`
 
-No test runner/tooling existed in this repo, so no automated tests were added.
-Core logic is isolated in `src/gameLogic.js` for deterministic testing when a test setup is introduced.
+Each entry supports:
+- `id`, `displayName`, `type`
+- `range`, `arcDeg`, `projectileCount`, `spreadDeg`, `muzzleVelocity`, `gravityScale`, `fuseTimeMs`, `bounciness`, `explosionRadius`, `baseDamage`, `terrainCarveRadius`, `knockback`
+- `statusEffect?: { kind: "poison" | "stun", durationMs: number, dps?: number }`
+- `sfx?`, `vfx?`
+- `comedy?: { rareChance?, selfStunMs?, extraKnockbackOnKill?, wobbleAfterMs?, bounceAtLowSpeed? }`
+
+Validation behavior:
+- Missing optional fields are defaulted.
+- Unknown fields log `console.warn`.
+- Invalid critical fields skip weapon entry with warning.
+
+## Built-in weapons
+
+- `AT4`: bazooka-style rocket with big carve/shake and panic wobble after long flight.
+- `Slingshot`: arcing shot, low-speed bounce once, rare rubber chicken transform.
+- `Bitch Slap`: short-range melee, huge knockback, miss causes self-stun.
+- `Magic Puke`: front cone multi-hit with poison and slip effect.
+
+## Adding a new weapon
+
+1. Add a new object in `src/weapons/data/weapons.json`.
+2. Keep `id` unique and `type` in `melee|cone|projectile`.
+3. Start from defaults by defining only fields you need.
+4. Reload dev server; loader validates and warns on schema issues.
+5. If special behavior is needed, extend type executor in:
+   - `/Users/oski/Documents/codex/test-project/worms-dynamics/src/weapons/executorProjectile.ts`
+   - `/Users/oski/Documents/codex/test-project/worms-dynamics/src/weapons/executorMelee.ts`
+   - `/Users/oski/Documents/codex/test-project/worms-dynamics/src/weapons/executorCone.ts`
+
+## Known limitations
+
+- No network multiplayer.
+- No wind simulation yet.
+- Primitive placeholder graphics/sfx text (no external audio assets).
+- Physics is intentionally arcadey and not physically realistic.
+
+## Next steps
+
+- Add wind and trajectory preview.
+- Add AI-controlled worms.
+- Add richer terrain generation themes.
+- Add replay recording via deterministic seed.

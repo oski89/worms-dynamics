@@ -1,0 +1,64 @@
+{
+  "weapons": [
+    {
+      "id": "at4",
+      "displayName": "AT4",
+      "type": "projectile",
+      "projectileCount": 1,
+      "muzzleVelocity": 500,
+      "gravityScale": 0.9,
+      "fuseTimeMs": 0,
+      "explosionRadius": 86,
+      "baseDamage": 48,
+      "terrainCarveRadius": 62,
+      "knockback": 860,
+      "comedy": {
+        "wobbleAfterMs": 1500
+      }
+    },
+    {
+      "id": "slingshot",
+      "displayName": "Slingshot",
+      "type": "projectile",
+      "projectileCount": 1,
+      "muzzleVelocity": 340,
+      "gravityScale": 1.15,
+      "fuseTimeMs": 0,
+      "bounciness": 0.5,
+      "explosionRadius": 24,
+      "baseDamage": 18,
+      "terrainCarveRadius": 14,
+      "knockback": 720,
+      "comedy": {
+        "rareChance": 0.05,
+        "bounceAtLowSpeed": true
+      }
+    },
+    {
+      "id": "bitch-slap",
+      "displayName": "Bitch Slap",
+      "type": "melee",
+      "range": 52,
+      "baseDamage": 22,
+      "knockback": 930,
+      "comedy": {
+        "selfStunMs": 500,
+        "extraKnockbackOnKill": 0.5
+      }
+    },
+    {
+      "id": "magic-puke",
+      "displayName": "Magic Puke",
+      "type": "cone",
+      "range": 90,
+      "arcDeg": 60,
+      "baseDamage": 8,
+      "knockback": 260,
+      "statusEffect": {
+        "kind": "poison",
+        "durationMs": 5000,
+        "dps": 4
+      }
+    }
+  ]
+}
