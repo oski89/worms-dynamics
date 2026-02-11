@@ -31,6 +31,7 @@ import { PauseMenu } from '../ui/PauseMenu';
 import { MobileControls } from '../ui/MobileControls';
 import { ScreenShake } from '../ui/ScreenShake';
 import { TextSfx } from '../audio/TextSfx';
+import { decideTurnRecovery } from './TurnRecovery';
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -216,6 +217,7 @@ export class Game {
     this.updateProjectiles(dt);
     this.updateWormPhysics(dt);
     this.checkWin();
+    this.recoverTurnIfNeeded();
 
     if (this.activeWorm && this.activeWorm.alive) {
       this.camera.follow(
@@ -604,6 +606,25 @@ export class Game {
     this.announcer.say(`${this.teamName(this.activeWorm.teamId)}'s turn.`, this.nowMs, 1300);
   }
 
+
+  private recoverTurnIfNeeded(): void {
+    const decision = decideTurnRecovery({
+      hasWinner: this.winner !== null,
+      hasActiveWorm: this.activeWorm !== null,
+      activeWormAlive: this.activeWorm?.alive ?? false,
+      hasActiveProjectiles: this.projectiles.some((p) => p.active)
+    });
+
+    if (decision === 'resolve') {
+      this.state.setPhase('resolve');
+      this.resolveTimerMs = 0;
+      return;
+    }
+
+    if (decision === 'nextTurn') {
+      this.nextTurn();
+    }
+  }
   private checkWin(): void {
     if (this.winner) return;
     const aliveTeams = new Set(this.worms.filter((w) => w.alive).map((w) => w.teamId));
