@@ -97,11 +97,15 @@ body,
 
 .mobile-controls {
   position: absolute;
-  inset: auto 0 0 0;
+  left: 0;
+  right: 0;
+  bottom: max(0px, env(safe-area-inset-bottom));
   padding: 12px;
   display: none;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
+  grid-template-areas:
+    'left right'
+    'fire end';
   gap: 10px;
   pointer-events: none;
 }
@@ -115,11 +119,20 @@ body,
   border-radius: 14px;
   background: rgba(12, 26, 43, 0.62);
   color: #ecf8ff;
-  min-height: 72px;
+  min-height: 84px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
+  user-select: none;
+}
+
+.left-pad {
+  grid-area: left;
+}
+
+.right-pad {
+  grid-area: right;
 }
 
 .fire-btn,
@@ -129,14 +142,17 @@ body,
   padding: 14px;
   font-size: 18px;
   font-weight: bold;
+  min-height: 56px;
 }
 
 .fire-btn {
+  grid-area: fire;
   background: #ff855f;
   color: #fff;
 }
 
 .end-btn {
+  grid-area: end;
   background: #5c9cff;
   color: #fff;
 }
@@ -148,11 +164,45 @@ body,
 
   .weapon-menu {
     max-width: 95vw;
-    bottom: 180px;
+    bottom: 192px;
+  }
+
+  .weapon-menu button {
+    font-size: 16px;
+    min-height: 46px;
+    padding: 10px 14px;
   }
 
   .hud {
     max-width: 94vw;
     font-size: 13px;
+  }
+
+  .pause-menu {
+    min-width: 170px;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) {
+  .mobile-controls {
+    grid-template-columns: 1fr 1fr auto auto;
+    grid-template-areas: 'left right fire end';
+    align-items: end;
+  }
+
+  .left-pad,
+  .right-pad {
+    min-height: 72px;
+  }
+
+  .fire-btn,
+  .end-btn {
+    min-width: 120px;
+    min-height: 72px;
+  }
+
+  .weapon-menu {
+    bottom: 98px;
+    max-width: 68vw;
   }
 }

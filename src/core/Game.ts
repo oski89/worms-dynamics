@@ -71,6 +71,7 @@ export class Game {
   private winner: string | null = null;
   private charge01 = 0;
   private charging = false;
+  private chargingFromMobile = false;
   private actionTriggerLatch = false;
   private actionTimerMs = 0;
   private resolveTimerMs = 0;
@@ -286,6 +287,7 @@ export class Game {
         }
         worm.hasActed = true;
         this.charging = false;
+        this.chargingFromMobile = false;
         this.charge01 = 0;
       } else if (worm.stunUntilMs > this.nowMs) {
         worm.hasActed = true;
@@ -334,8 +336,9 @@ export class Game {
     let aimInput = 0;
     if (this.input.isDown('w') || this.input.isDown('arrowup')) aimInput += 1;
     if (this.input.isDown('s') || this.input.isDown('arrowdown')) aimInput -= 1;
-    aimInput += mobile.aimDeltaY * 0.1;
-    worm.aimAngleDeg = Math.max(5, Math.min(85, worm.aimAngleDeg + aimInput * dt * 120));
+    worm.aimAngleDeg += aimInput * dt * 120;
+    worm.aimAngleDeg += mobile.aimDeltaY * 0.14;
+    worm.aimAngleDeg = Math.max(5, Math.min(85, worm.aimAngleDeg));
   }
 
   private handleActionInput(
@@ -344,18 +347,31 @@ export class Game {
     mobile: ReturnType<MobileControls['consumeState']>,
     dt: number
   ): void {
-    const triggerHeld = this.input.chargeHeld || mobile.fireHeld;
+    const keyboardHeld = this.input.chargeHeld;
+    const triggerHeld = keyboardHeld || mobile.fireHeld;
     const triggerPressed = mobile.firePressed || (triggerHeld && !this.actionTriggerLatch);
 
     if (weapon.type === 'projectile') {
       if (triggerHeld) {
+        if (!this.charging) this.chargingFromMobile = mobile.fireHeld && !keyboardHeld;
         this.charging = true;
         this.charge01 = Math.min(1, this.charge01 + dt * 0.7);
       }
       if (this.charging && !triggerHeld) {
-        this.fireProjectileWeapon(worm, weapon);
-        worm.hasActed = true;
+        const blockedTap =
+          this.chargingFromMobile &&
+          mobile.fireReleased &&
+          mobile.fireHoldMs < GAME_CONFIG.mobileProjectileHoldGuardMs;
+
+        if (!blockedTap) {
+          this.fireProjectileWeapon(worm, weapon);
+          worm.hasActed = true;
+        } else {
+          this.announcer.say('Tap was too short. Hold Fire a bit longer.', this.nowMs, 1000);
+        }
+
         this.charging = false;
+        this.chargingFromMobile = false;
         this.charge01 = 0;
       }
     } else if (triggerPressed) {
@@ -393,7 +409,6 @@ export class Game {
 
     this.actionTriggerLatch = triggerHeld;
   }
-
   private fireProjectileWeapon(worm: Worm, weapon: WeaponConfig, power01Override?: number): void {
     const power01 = Math.max(0.08, power01Override ?? this.charge01);
     const spawns = spawnProjectiles(
@@ -584,6 +599,7 @@ export class Game {
     this.actionTimerMs = GAME_CONFIG.maxActionSeconds * 1000;
     this.charge01 = 0;
     this.charging = false;
+    this.chargingFromMobile = false;
     this.actionTriggerLatch = false;
     this.announcer.say(`${this.teamName(this.activeWorm.teamId)}'s turn.`, this.nowMs, 1300);
   }

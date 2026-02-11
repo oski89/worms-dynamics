@@ -22,6 +22,7 @@ export const GAME_CONFIG = {
   resolveMaxMs: 2200,
   wormMaxVx: 520,
   wormMaxVy: 780,
+  mobileProjectileHoldGuardMs: 120,
   outOfBoundsMargin: 120,
   teamColors: ['#6dd16a', '#5ba7ff']
 } as const;

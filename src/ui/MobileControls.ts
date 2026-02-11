@@ -5,17 +5,22 @@ export type MobileState = {
   aimDeltaY: number;
   firePressed: boolean;
   fireHeld: boolean;
+  fireReleased: boolean;
+  fireHoldMs: number;
   endTurnPressed: boolean;
 };
 
 export class MobileControls {
   readonly root: HTMLDivElement;
   private joystick = new VirtualJoystick();
+  private fireDownAt = 0;
   private state: MobileState = {
     moveX: 0,
     aimDeltaY: 0,
     firePressed: false,
     fireHeld: false,
+    fireReleased: false,
+    fireHoldMs: 0,
     endTurnPressed: false
   };
 
@@ -64,7 +69,7 @@ export class MobileControls {
     rightPad.addEventListener('pointermove', (e) => {
       if (rightPointer !== e.pointerId) return;
       const dy = e.clientY - lastY;
-      this.state.aimDeltaY = -dy * 0.4;
+      this.state.aimDeltaY = -dy * 0.65;
       lastY = e.clientY;
     });
     rightPad.addEventListener('pointerup', (e) => {
@@ -76,9 +81,14 @@ export class MobileControls {
     fire.addEventListener('pointerdown', () => {
       this.state.fireHeld = true;
       this.state.firePressed = true;
+      this.state.fireReleased = false;
+      this.fireDownAt = performance.now();
+      this.state.fireHoldMs = 0;
     });
     fire.addEventListener('pointerup', () => {
       this.state.fireHeld = false;
+      this.state.fireReleased = true;
+      this.state.fireHoldMs = performance.now() - this.fireDownAt;
     });
 
     endTurn.addEventListener('click', () => {
@@ -89,6 +99,7 @@ export class MobileControls {
   consumeState(): MobileState {
     const snapshot = { ...this.state };
     this.state.firePressed = false;
+    this.state.fireReleased = false;
     this.state.endTurnPressed = false;
     this.state.aimDeltaY = 0;
     return snapshot;
